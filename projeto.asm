@@ -6,6 +6,9 @@ APAGA_AVISO     		EQU 6040H   ; endereço do comando para apagar o aviso de nenh
 SELECIONA_CENARIO_FUNDO EQU 6042H   ; endereço do comando para selecionar uma imagem de fundo
 TOCA_SOM				EQU 605AH   ; endereço do comando para tocar um som
 
+TEC_LIN					EQU 0C000H	; endereço do POUT-2 que liga às linhas do teclado
+TEC_COL					EQU 0E000H	; endereço do PIN que liga às colunas do teclado
+
 MIN_COLUNA              EQU  0      ; número da coluna mais à esquerda que o boneco pode ocupar
 MAX_COLUNA		        EQU  63     ; número da coluna mais à direita que o boneco pode ocupar
 
@@ -42,8 +45,8 @@ PLACE 0
     MOV  [APAGA_ECRÃ], R1	 ; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
     MOV  [SELECIONA_CENARIO_FUNDO], R1	; seleciona o cenário de fundo
 
-    MOV R1, 30		; linha inicial
-    MOV R2, 29		; coluna inicial
+    MOV R1, 15		; linha inicial
+    MOV R2, 30		; coluna inicial
 	MOV R4, rover	; tabela que define o boneco
 	MOV R11, ATRASO ; atraso em ms que limita a velocidade do rover
 
@@ -154,11 +157,12 @@ desenha_boneco:
 	PUSH R5				; largura
 	PUSH R6				; altura
 	PUSH R7				; coluna inicial
-	PUSH R8				; largura inicial
+	PUSH R8				; largura inicial	
 	MOV R7, R2          ; define a coluna inicial
 	MOV R6, [R4]		; obtém a altura
 	ADD R4, 2           ; próximo dado na tabela
 	MOV	R5, [R4]		; obtém a largura
+	MOV R8, R5			; define a largura inicial
 	ADD	R4, 2			; próximo dado na tabela
 desenha_pixels:
 	MOV	R3, [R4]		; obtém a cor do pixel
@@ -166,14 +170,12 @@ desenha_pixels:
 	ADD	R4, 2			; endereço da cor do próximo pixel (2 porque cada cor de pixel é uma word)
     ADD  R2, 1			; próxima coluna
     SUB  R5, 1			; menos uma coluna para tratar
-    JNZ  desenha_pixels	; continua até percorrer toda a largura do boneco
-
-	ADD R1, 1			; próxima linha
-	SUB R6, 1			; menos uma linha para tratar
+    JNZ desenha_pixels	; continua até percorrer toda a largura do boneco
 	MOV R2, R7			; redefinir a coluna
 	MOV R5, R8          ; redefinir a largura
+	ADD R1, 1			; próxima linha
+	SUB R6, 1			; menos uma linha para tratar
 	JNZ desenha_pixels	; continua até percorrer toda a altura do boneco
-
 	POP R8
 	POP R7
 	POP R6
@@ -208,6 +210,7 @@ apaga_boneco:
 	MOV R8, R5			; define a largura inicial
 	ADD	R4, 2			; próximo dado da tabela
 	MOV R6, [R4]		; obtém a altura do boneco
+	MOV R8, R6
 	ADD R4, 2			; próximo dado da tabela
 apaga_pixels:
 	MOV	R3, 0			; cor para apagar o próximo pixel do boneco
@@ -216,13 +219,11 @@ apaga_pixels:
     ADD R2, 1			; próxima coluna
     SUB R5, 1			; menos uma coluna para tratar
     JNZ  apaga_pixels	; continua até percorrer toda a largura do boneco
-
 	MOV R2, R7			; redefine a coluna
 	MOV R5, R8			; redefine a largura
 	ADD R1, 1			; próxima linha
 	SUB R6, 1			; menos uma linha para tratar
 	JNZ  apaga_pixels	; continua até percorrer toda a altura do boneco
-
 	POP R8
 	POP R7
 	POP R6
@@ -239,7 +240,6 @@ apaga_pixels:
 ; **********************************************************************
 ; ATRASO - Executa um ciclo para implementar um atraso.
 ; Argumentos:   R11 - valor que define o atraso
-;
 ; **********************************************************************
 atraso:
 	PUSH R11
@@ -252,8 +252,7 @@ ciclo_atraso:
 ; **********************************************************************
 ; TESTA_LIMITES - Testa se o boneco chegou aos limites do ecrã e nesse caso
 ;			   impede o movimento (força R7 a 0)
-; Argumentos:	R2 - coluna em que o boneco
- está
+; Argumentos:	R2 - coluna em que o boneco está
 ;			    R6 - largura do boneco
 ;			    R7 - sentido de movimento do boneco (valor a somar à coluna
 ;				     em cada movimento: +1 para a direita, -1 para a esquerda)
@@ -261,8 +260,8 @@ ciclo_atraso:
 ; Retorna: 	    R7 - 0 se já tiver chegado ao limite, inalterado caso contrário	
 ; **********************************************************************
 testa_limites:
-	PUSH	R5
-	PUSH	R6
+	PUSH R5
+	PUSH R6
 testa_limite_esquerdo:		; vê se o boneco chegou ao limite esquerdo
 	MOV	R5, MIN_COLUNA
 	CMP	R2, R5
