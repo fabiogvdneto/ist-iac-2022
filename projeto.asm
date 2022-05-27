@@ -6,8 +6,8 @@ APAGA_AVISO     		EQU 6040H   ; endereço do comando para apagar o aviso de nenh
 SELECIONA_CENARIO_FUNDO EQU 6042H   ; endereço do comando para selecionar uma imagem de fundo
 TOCA_SOM				EQU 605AH   ; endereço do comando para tocar um som
 
-MIN_COLUNA              EQU  0      ; número da coluna mais à esquerda que o objeto pode ocupar
-MAX_COLUNA		        EQU  63     ; número da coluna mais à direita que o objeto pode ocupar
+MIN_COLUNA              EQU  0      ; número da coluna mais à esquerda que o boneco pode ocupar
+MAX_COLUNA		        EQU  63     ; número da coluna mais à direita que o boneco pode ocupar
 
 COR_ROVER               EQU 0E7E4H  ; cor do rover
 COR_METEORO             EQU 0E165H  ; cor do meteoro
@@ -45,11 +45,16 @@ PLACE 0
     MOV R1, 30		; linha inicial
     MOV R2, 29		; coluna inicial
 	MOV R4, rover	; tabela que define o boneco
+	MOV R11, ATRASO ; atraso em ms que limita a velocidade do rover
 
     CALL desenha_boneco
+
+ciclo:
 	CALL espera_tecla		; espera que uma tecla seja premida e,
 							; quando for, guarda a linha em R6 e a coluna em R0
 	CALL avalia_tecla
+	CALL atraso
+	JMP ciclo
 	
 
 ; ******************************************
@@ -58,53 +63,65 @@ PLACE 0
 ;             R6 - linha da tecla premida
 ; ******************************************
 avalia_tecla:
-	PUSH R1
-	PUSH R2
+	PUSH R7
+	PUSH R8
 	CALL tecla
+	CMP R8, 0
+	JZ tecla_0				; se a tecla premida for 0
+	CMP R8, 2
+	JZ tecla_2				; se a tecla premida for 2
+	JMP avalia_tecla_fim	; se a tecla premida não for 0 nem 2
 tecla_0:
-	MOV R2, -1
-	CALL move_horizontal
+	MOV R7, -1				; distância a percorrer
+	CALL move_horizontal	; move para a esquerda
 	JMP avalia_tecla_fim
 tecla_2:
-	MOV R2, 1
-	CALL move_horizontal
+	MOV R7, 1				; distância a percorrer
+	CALL move_horizontal	; move para a direita
 avalia_tecla_fim:
-	POP R2
-	POP R1
+	POP R7
+	POP R8
 	RET
 
 ; ******************************************
 ; TECLA - Obtém a tecla premida.
 ; Argumentos: R0 - linha
 ;             R6 - coluna
-; Retorna:    R1 - tecla premida
+; Retorna:    R8 - tecla premida
 ; ******************************************
 tecla:
-	MOV R1, 0					; inicializa R1 (será a tecla premida)
+	MOV R8, 0					; inicializa R10 (será a tecla premida)
 tecla_linha_ciclo:
 	SHR R0, 1					; avança a linha
 	JZ tecla_coluna_ciclo		; se não houver mais linhas, pula para as colunas
-	ADD R1, 4					; adiciona 4 ao valor da tecla premida
+	ADD R8, 4					; adiciona 4 ao valor da tecla premida
 tecla_coluna_ciclo:
 	SHR R6, 1					; avança a coluna
 	JZ tecla_fim				; se não houver mais colunas, termina
-	ADD R1, 1					; adiciona 1 ao valor da tecla premida
+	ADD R8, 1					; adiciona 1 ao valor da tecla premida
 tecla_fim:
 	RET
 
 ; *********************************************
 ; MOVE_HORIZONTAL - Move na horizontal (negativo para a esquerda e positivo para a direita)
-; Argumentos: R0 - linha
-;             R6 - coluna inicial
-;             R4 - tabela que define o objeto
+; Argumentos: R1 - linha
+;             R2 - coluna inicial
+;             R4 - tabela que define o boneco
 ;             R7 - distância a percorrer (pode ser negativo)
 ; *********************************************
 move_horizontal:
-	MOV R6, [R4]
-	CALL testa_limites
-	CALL apaga_boneco
-	ADD R7, R2
-	CALL 
+	PUSH R2
+	PUSH R6
+	PUSH R7
+	MOV R6, [R4]				; obtém largura do boneco
+	CALL testa_limites			; testa os limites (força R7 a 0 se chegou ao limite)
+	CALL apaga_boneco			; apaga o boneco
+	ADD R2, R7					; atualiza coluna
+	CALL desenha_boneco			; redesenha o boneco
+	POP R7
+	POP R6
+	POP R2
+	RET
 
 ; **********************************************************************
 ; ESCREVE_PIXEL - Escreve um pixel na linha e coluna indicadas.
@@ -149,12 +166,14 @@ desenha_pixels:
 	ADD	R4, 2			; endereço da cor do próximo pixel (2 porque cada cor de pixel é uma word)
     ADD  R2, 1			; próxima coluna
     SUB  R5, 1			; menos uma coluna para tratar
-    JNZ  desenha_pixels	; continua até percorrer toda a largura do objeto
+    JNZ  desenha_pixels	; continua até percorrer toda a largura do boneco
+
 	ADD R1, 1			; próxima linha
 	SUB R6, 1			; menos uma linha para tratar
 	MOV R2, R7			; redefinir a coluna
 	MOV R5, R8          ; redefinir a largura
-	JNZ desenha_pixels	; continua até percorrer toda a altura do objeto
+	JNZ desenha_pixels	; continua até percorrer toda a altura do boneco
+
 	POP R8
 	POP R7
 	POP R6
@@ -196,12 +215,14 @@ apaga_pixels:
 	ADD	R4, 2			; próximo dado da tabela
     ADD R2, 1			; próxima coluna
     SUB R5, 1			; menos uma coluna para tratar
-    JNZ  apaga_pixels	; continua até percorrer toda a largura do objeto
+    JNZ  apaga_pixels	; continua até percorrer toda a largura do boneco
+
 	MOV R2, R7			; redefine a coluna
 	MOV R5, R8			; redefine a largura
 	ADD R1, 1			; próxima linha
 	SUB R6, 1			; menos uma linha para tratar
-	JNZ  apaga_pixels	; continua até percorrer toda a altura do objeto
+	JNZ  apaga_pixels	; continua até percorrer toda a altura do boneco
+
 	POP R8
 	POP R7
 	POP R6
@@ -221,7 +242,7 @@ apaga_pixels:
 ;
 ; **********************************************************************
 atraso:
-	PUSH	R11
+	PUSH R11
 ciclo_atraso:
 	SUB	R11, 1
 	JNZ	ciclo_atraso
@@ -231,7 +252,8 @@ ciclo_atraso:
 ; **********************************************************************
 ; TESTA_LIMITES - Testa se o boneco chegou aos limites do ecrã e nesse caso
 ;			   impede o movimento (força R7 a 0)
-; Argumentos:	R2 - coluna em que o objeto está
+; Argumentos:	R2 - coluna em que o boneco
+ está
 ;			    R6 - largura do boneco
 ;			    R7 - sentido de movimento do boneco (valor a somar à coluna
 ;				     em cada movimento: +1 para a direita, -1 para a esquerda)
