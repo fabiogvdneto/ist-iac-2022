@@ -35,7 +35,6 @@ rover:
 PLACE 0
     MOV SP, pilha_inicial    ; inicializa SP para a palavra a seguir à última da pilha
     MOV	R1, 0			     ; cenário de fundo número 0
-	MOV	R7, 1			     ; valor a somar à coluna do boneco, para o movimentar
 
     MOV  [APAGA_AVISO], R1	 ; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
     MOV  [APAGA_ECRÃ], R1	 ; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
@@ -59,15 +58,15 @@ PLACE 0
 ;
 ; **********************************************************************
 desenha_boneco:
-	PUSH R2
-	PUSH R3
-	PUSH R4
+	PUSH R2 ; coluna
+	PUSH R3 ; cor do pixel currente
+	PUSH R4 ; 
 	PUSH R5
 	PUSH R6
+	MOV R6, [R4]        ; obtém a altura do boneco
+	ADD R4, 2           
 	MOV	R5, [R4]			; obtém a largura do boneco
 	ADD	R4, 2			; endereço da cor do 1º pixel (2 porque a largura é uma word)
-	MOV R6, [R4]
-	ADD R4, 2
 desenha_pixels:       		; desenha os pixels do boneco a partir da tabela
 	MOV	R3, [R4]			; obtém a cor do próximo pixel do boneco
 	CALL	escreve_pixel		; escreve cada pixel do boneco
@@ -75,6 +74,8 @@ desenha_pixels:       		; desenha os pixels do boneco a partir da tabela
     ADD  R2, 1               ; próxima coluna
     SUB  R5, 1			; menos uma coluna para tratar
     JNZ  desenha_pixels      ; continua até percorrer toda a largura do objeto
+	ADD R1, 1
+	SUB R6, 1
 	POP R6
 	POP	R5
 	POP	R4
