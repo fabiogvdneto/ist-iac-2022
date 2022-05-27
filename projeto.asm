@@ -26,7 +26,7 @@ pilha:
 pilha_inicial:
 
 rover:
-    WORD ALTURA_ROVER, LARGURA_ROVER
+    WORD LARGURA_ROVER, ALTURA_ROVER
     WORD 0, 0, COR_ROVER, 0, 0                                  ; linha 1
     WORD COR_ROVER, COR_ROVER, COR_ROVER, COR_ROVER, COR_ROVER  ; linha 2
 
@@ -58,29 +58,38 @@ PLACE 0
 ;
 ; **********************************************************************
 desenha_boneco:
+	PUSH R1 ; linha
 	PUSH R2 ; coluna
-	PUSH R3 ; cor do pixel currente
-	PUSH R4 ; 
-	PUSH R5
-	PUSH R6
+	PUSH R3 ; cor do pixel
+	PUSH R4 ; tabela do boneco
+	PUSH R5 ; largura do boneco
+	PUSH R6 ; altura do boneco
+	PUSH R7 ; coluna inicial
+	PUSH R8 ; largura do boneco inicial
+	MOV R7, R2
 	MOV R6, [R4]        ; obtém a altura do boneco
 	ADD R4, 2           
-	MOV	R5, [R4]			; obtém a largura do boneco
+	MOV	R5, [R4]		; obtém a largura do boneco
 	ADD	R4, 2			; endereço da cor do 1º pixel (2 porque a largura é uma word)
-desenha_pixels:       		; desenha os pixels do boneco a partir da tabela
-	MOV	R3, [R4]			; obtém a cor do próximo pixel do boneco
-	CALL	escreve_pixel		; escreve cada pixel do boneco
+desenha_pixels:       	; desenha os pixels do boneco a partir da tabela
+	MOV	R3, [R4]		; obtém a cor do próximo pixel do boneco
+	CALL escreve_pixel  ; escreve cada pixel do boneco
 	ADD	R4, 2			; endereço da cor do próximo pixel (2 porque cada cor de pixel é uma word)
-    ADD  R2, 1               ; próxima coluna
+    ADD  R2, 1          ; próxima coluna
     SUB  R5, 1			; menos uma coluna para tratar
-    JNZ  desenha_pixels      ; continua até percorrer toda a largura do objeto
-	ADD R1, 1
-	SUB R6, 1
+    JNZ  desenha_pixels ; continua até percorrer toda a largura do objeto
+	ADD R1, 1           ; próxima linha
+	SUB R6, 1           ; menos uma linha para tratar
+	MOV R2, R7          ; redefinir a coluna
+	JNZ desenha_pixels  ; continua até percorrer toda a altura do objeto
+	POP R8
+	POP R7
 	POP R6
 	POP	R5
 	POP	R4
 	POP	R3
 	POP	R2
+	POP R1
 	RET
 
 ; **********************************************************************
