@@ -1,0 +1,53 @@
+R1 - linha do rover
+R2 - coluna do rover
+
+TESTA_LINHA
+Args: R6 - linha a testar (1, 2, 4, 8)
+Rets: R0 - coluna da tecla premida (1, 2, 4, 8), ou 0
+
+TESTA_LINHAS
+Args: R6 - linha da tecla premida (1, 2, 4, 8), ou 0
+Rets: R0 - coluna da tecla premida (1, 2, 4, 8), ou 0
+
+HA_TECLA (espera até tecla parar de ser premida)
+Args: R6 - linha a testar (1, 2, 4, 8)
+
+ESPERA_TECLA (espera até alguma tecla ser premida)
+Rets: R6 - linha da tecla premida (1, 2, 4, 8)
+      R0 - coluna da tecla premida (1, 2, 4, 8)
+
+TESTA_LIMITES
+Args: R2 - coluna atual do boneco
+      R6 - largura do boneco
+      R7 - sentido do movimento (-1 = esquerda, +1 = direita)
+Rets: R7 - 0 se já tiver chegado ao limite, ou inalterado
+
+ATRASO
+Args: R11 - valor que define o atraso
+
+APAGA_BONECO
+Args: R1 - linha de referência
+      R2 - coluna de referência
+      R4 - tabela que define o boneco
+
+DESENHA_BONECO
+Args: R1 - linha de referência
+      R2 - coluna de referência
+      R4 - tabela que define o boneco
+
+ESCREVE_PIXEL
+Args: R1 - linha
+      R2 - coluna
+      R3 - cor em formato ARGB de 16 bits
+
+MOVE_HORIZONTAL
+Args: R1 - linha
+      R2 - coluna inicial
+      R4 - tabela que define o boneco
+      R7 - distância a percorrer (-1 ou 1)
+Rets: R2 - coluna atualizada
+
+TECLA
+Args: R0 - coluna
+      R6 - linha
+Rets: R5 - valor da tecla
