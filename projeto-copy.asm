@@ -7,20 +7,18 @@ SELECIONA_CENARIO_FUNDO EQU 6042H	; endereço do comando para selecionar uma ima
 TOCA_SOM				EQU 605AH	; endereço do comando para tocar um som
 
 DISPLAY					EQU 0A000H	; enderço do POUT-1 ligado a 3 displays
+
 TEC_LIN					EQU 0C000H	; endereço do POUT-2 que liga às linhas do teclado
 TEC_COL					EQU 0E000H	; endereço do PIN que liga às colunas do teclado
+MIN_COLUNA              EQU  0		; número da coluna mais à esquerda que o boneco pode ocupar
+MAX_COLUNA		        EQU  63		; número da coluna mais à direita que o boneco pode ocupar
 
-MIN_COLUNA              EQU 0		; número da coluna mais à esquerda que o boneco pode ocupar
-MAX_COLUNA		        EQU 63		; número da coluna mais à direita que o boneco pode ocupar
-
-COR_ROVER               EQU 0FDD7H	; cor do rover RGB
+COR_ROVER               EQU 0E7E4H	; cor do rover
 LARGURA_ROVER           EQU 5		; largura do rover
 ALTURA_ROVER            EQU 2		; altura do rover
-LINHA_ROVER				EQU 30		; linha do rover
 
-COR_MET_BOM             EQU 0F0E2H  ; cor do meteoro bom
-TAMANHO_MET_BOM         EQU 5       ; tamanho do meteoro bom
-COLUNA_MET_BOM			EQU 30		; coluna do meteoro bom
+COR_METEORO             EQU 0E165H	; cor do meteoro
+TAMANHO_METEORO         EQU 5		; tamanho do meteoro
 
 ATRASO                  EQU 0C000H	; atraso aplicado à movimentação do rover
 MASCARA					EQU 0FH		; máscara 0-3 bits
@@ -36,92 +34,48 @@ rover:
     WORD 0, 0, COR_ROVER, 0, 0                                  ; linha 1
     WORD COR_ROVER, COR_ROVER, COR_ROVER, COR_ROVER, COR_ROVER  ; linha 2
 
-meteoro_bom:
-    WORD TAMANHO_MET_BOM, TAMANHO_MET_BOM
-    WORD 0, COR_MET_BOM, COR_MET_BOM, COR_MET_BOM, 0
-    WORD COR_MET_BOM, COR_MET_BOM, COR_MET_BOM, COR_MET_BOM, COR_MET_BOM
-    WORD COR_MET_BOM, COR_MET_BOM, COR_MET_BOM, COR_MET_BOM, COR_MET_BOM
-    WORD COR_MET_BOM, COR_MET_BOM, COR_MET_BOM, COR_MET_BOM, COR_MET_BOM
-    WORD 0, COR_MET_BOM, COR_MET_BOM, COR_MET_BOM, 0
-
 PLACE 0
     MOV SP, pilha_inicial				; inicializa SP para a palavra a seguir à última da pilha
-    MOV	R0, 0							; valor do display
-	MOV [DISPLAY], R0					; reinicia o valor no display
+    MOV	R0, 0							; cenário de fundo número 0
     MOV [APAGA_AVISO], R0				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
     MOV [APAGA_ECRÃ], R0				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
     MOV [SELECIONA_CENARIO_FUNDO], R0	; seleciona o cenário de fundo
 
-    MOV R1, 30		; coluna inicial do rover
-	MOV R2, 0		; linha do meteoro bom
+    MOV R1, 30		; linha inicial do rover
+    MOV R2, 30		; coluna inicial do rover
 
-    MOV R11, LINHA_ROVER	; linha de referência do rover
-    MOV R10, R1     		; coluna de referência do rover
-	MOV R8, rover			; tabela que define o rover
-    CALL desenha_boneco		; desenha o rover
-
-	MOV R11, R2				; linha de referência do meteoro bom
-	MOV R10, COLUNA_MET_BOM	; coluna de referência do meteoro bom
-	MOV R8, meteoro_bom		; tabela que define o meteoro bom
-	CALL desenha_boneco		; desenha o meteoro bom
+    MOV R11, R1     ; linha de referência do rover
+    MOV R10, R2     ; coluna de referência do rover
+	MOV R8, rover	; tabela que define o rover
+    CALL desenha_boneco
 ciclo:
 	CALL espera_tecla		; espera que uma tecla seja premida e,
 							; quando for, retorna a linha (R11) e a coluna (R10)
 	CALL tecla              ; obtém o valor da tecla premida (R9) a partir da linha (R11) e da coluna (R10)
 	CMP R9, 0               ; se a tecla premida for 0
 	JZ move_rover_esquerda  ; move o rover para a esquerda
-	CMP R9, 1				; se a tecla premida for 1
-	JZ desce_meteoro		; desce o meteoro
 	CMP R9, 2               ; se a tecla premida for 2
 	JZ move_rover_direita	; move o rover para a direita
-	CMP R9, 3				; se a tecla premida for 3
-    JZ aumenta_display      ; aumenta o valor no display
-    CMP R9, 7				; se a tecla premida for 7
-    JZ diminui_display      ; diminui o valor no display
 	JMP ciclo
 move_rover_esquerda:
-    MOV R11, LINHA_ROVER
-    MOV R10, R1
+    MOV R11, R1
+    MOV R10, R2
 	MOV R8, rover			; tabela que define o rover
 	MOV R7, -1				; distância a percorrer
 	CALL move_horizontal	; move para a esquerda
-    MOV R1, R10             ; atualiza a coluna
+    MOV R2, R10             ; atualiza a coluna
 	MOV R11, ATRASO         ; valor que define o atraso
 	CALL atraso             ; aplica o atraso
 	JMP ciclo
-desce_meteoro:
-	CALL ha_tecla
-	MOV R11, 0
-	MOV [TOCA_SOM], R11		; toca o primeiro som (meteoro a cair)
-	MOV R11, R2				; linha de referência do meteoro bom
-	MOV R10, COLUNA_MET_BOM	; coluna de referência do meteoro bom
-	MOV R8, meteoro_bom		; tabela que define o meteoro bom
-	CALL apaga_boneco
-	ADD R11, 1
-	CALL desenha_boneco
-	MOV R2, R11
-	JMP ciclo
 move_rover_direita:
-    MOV R11, LINHA_ROVER
-    MOV R10, R1
+    MOV R11, R1
+    MOV R10, R2
 	MOV R8, rover			; tabela que define o rover
 	MOV R7, 1				; distância a percorrer
 	CALL move_horizontal	; move para a direita
-    MOV R1, R10             ; atualiza a coluna
+    MOV R2, R10             ; atualiza a coluna
 	MOV R11, ATRASO         ; valor que define o atraso
 	CALL atraso             ; aplica o atraso
-    JMP ciclo
-aumenta_display:
-    CALL ha_tecla
-    ADD R0, 1				; adiciona um ao valor do display
-    MOV [DISPLAY], R0		; mostra o novo valor no display
-    JMP ciclo
-diminui_display:
-    CALL ha_tecla
-    CMP R0, 0				; vê se o valor no display é zero para evitar números negativos
-    JZ ciclo				; o valor mostrado no display não pode ser negativo
-    SUB R0, 1				; subtrai um ao valor do display
-    MOV [DISPLAY], R0		; mostra o novo valor no display
     JMP ciclo
 
 ; *********************************************
