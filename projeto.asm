@@ -6,6 +6,8 @@ APAGA_AVISO     		EQU 6040H	; endereço do comando para apagar o aviso de nenhum
 SELECIONA_CENARIO_FUNDO EQU 6042H	; endereço do comando para selecionar uma imagem de fundo
 TOCA_SOM				EQU 605AH	; endereço do comando para tocar um som
 
+DISPLAY					EQU 0A000H	; endereço do POUT-1 ligado a 3 displays
+
 TEC_LIN					EQU 0C000H	; endereço do POUT-2 que liga às linhas do teclado
 TEC_COL					EQU 0E000H	; endereço do PIN que liga às colunas do teclado
 MIN_COLUNA              EQU  0		; número da coluna mais à esquerda que o boneco pode ocupar
@@ -52,38 +54,24 @@ PLACE 0
 ciclo:
 	CALL espera_tecla		; espera que uma tecla seja premida e,
 							; quando for, retorna a linha em R6 e a coluna em R0
-	CALL avalia_tecla		; avalia a tecla na linha R6 e na coluna R0
-	CALL atraso
-	JMP ciclo
-	
-
-; ******************************************
-; AVALIA_TECLA - Avalia a tecla premida
-; Argumentos: R0 - coluna da tecla premida
-;             R6 - linha da tecla premida
-; ******************************************
-avalia_tecla:
-	PUSH R7
-	PUSH R5
 	CALL tecla
 	CMP R5, 0
 	JZ tecla_0				; se a tecla premida for 0
 	CMP R5, 2
 	JZ tecla_2				; se a tecla premida for 2
-	JMP avalia_tecla_fim	; se a tecla premida não for 0 nem 2
+	JMP ciclo_fim			; se a tecla premida não for 0 nem 2
 tecla_0:
 	MOV R4, rover			; tabela que define o rover
 	MOV R7, -1				; distância a percorrer
 	CALL move_horizontal	; move para a esquerda
-	JMP avalia_tecla_fim
+	JMP ciclo_fim	
 tecla_2:
 	MOV R4, rover			; tabela que define o rover
 	MOV R7, 1				; distância a percorrer
 	CALL move_horizontal	; move para a direita
-avalia_tecla_fim:
-	POP R5
-	POP R7
-	RET
+ciclo_fim:
+	CALL atraso
+	JMP ciclo
 
 ; ******************************************
 ; TECLA - Obtém a tecla premida.
@@ -164,12 +152,12 @@ desenha_boneco:
 	PUSH R7				; coluna inicial
 	PUSH R8				; largura inicial
 	MOV R5, [R4]		; obtém a largura
-	ADD R4, 2           ; próximo dado na tabela
-	MOV	R6, [R4]		; obtém a altura
+	ADD R4, 2			; próximo dado na tabela
+	MOV R6, [R4]		; obtém a altura
 	MOV R7, R2          ; define a coluna inicial
 	MOV R8, R5			; define a largura inicial
 desenha_pixels:
-	ADD	R4, 2			; próximo dado na tabela
+	ADD R4, 2			; próximo dado na tabela
 	MOV	R3, [R4]		; obtém a cor do pixel
 	CALL escreve_pixel	; escreve o pixel usando o R1 (linha), o R2 (coluna) e o R3 (cor)
     ADD R2, 1			; próxima coluna
@@ -198,18 +186,17 @@ desenha_pixels:
 ; Argumentos:   R1 - linha
 ;               R2 - coluna
 ;               R4 - tabela que define o boneco
-;
 ; **********************************************************************
 apaga_boneco:
-	PUSH R1				
-	PUSH R2
-	PUSH R3
-	PUSH R4
-	PUSH R5
-	PUSH R6
+	PUSH R1				; linha
+	PUSH R2				; coluna
+	PUSH R3				; cor do pixel
+	PUSH R4				; tabela
+	PUSH R5				; largura
+	PUSH R6				; altura
 	PUSH R7				; coluna inicial
 	PUSH R8				; largura inicial
-	MOV	R5, [R4]		; obtém a largura
+	MOV R5, [R4]		; obtém a largura
 	ADD R4, 2			; próximo dado na tabela
 	MOV R6, [R4]		; obtém a altura
 	MOV	R3, 0			; cor para apagar o próximo pixel do boneco
