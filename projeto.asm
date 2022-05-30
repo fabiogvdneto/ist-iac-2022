@@ -23,7 +23,7 @@ TAMANHO_MET_BOM         EQU 5       ; tamanho do meteoro bom
 COLUNA_MET_BOM			EQU 30		; coluna do meteoro bom
 
 ATRASO                  EQU 0C000H	; atraso aplicado à movimentação do rover
-MASCARA					EQU 0FH		; máscara 0-3 bits
+MASCARA					EQU 000FH	; máscara 0-3 bits
 
 
 PLACE 1000H
@@ -33,8 +33,8 @@ pilha_inicial:
 
 rover:
     WORD LARGURA_ROVER, ALTURA_ROVER
-    WORD 0, 0, COR_ROVER, 0, 0                                  ; linha 1
-    WORD COR_ROVER, COR_ROVER, COR_ROVER, COR_ROVER, COR_ROVER  ; linha 2
+    WORD 0, 0, COR_ROVER, 0, 0
+    WORD COR_ROVER, COR_ROVER, COR_ROVER, COR_ROVER, COR_ROVER
 
 meteoro_bom:
     WORD TAMANHO_MET_BOM, TAMANHO_MET_BOM
@@ -48,9 +48,9 @@ PLACE 0
     MOV SP, pilha_inicial				; inicializa SP para a palavra a seguir à última da pilha
     MOV	R0, 0							; valor do display
 	MOV [DISPLAY], R0					; reinicia o valor no display
-    MOV [APAGA_AVISO], R0				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
-    MOV [APAGA_ECRÃ], R0				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
-    MOV [SELECIONA_CENARIO_FUNDO], R0	; seleciona o cenário de fundo
+    MOV [APAGA_AVISO], R0				; apaga o aviso de nenhum cenário selecionado (o valor de R0 não é relevante)
+    MOV [APAGA_ECRÃ], R0				; apaga todos os pixels já desenhados (o valor de R0 não é relevante)
+    MOV [SELECIONA_CENARIO_FUNDO], R0	; seleciona o cenário de fundo (aproveita-se o valor de R0)
 
     MOV R1, 30		; coluna inicial do rover
 	MOV R2, 0		; linha do meteoro bom
@@ -67,21 +67,21 @@ PLACE 0
 ciclo:
 	CALL espera_tecla		; espera que uma tecla seja premida e,
 							; quando for, retorna a linha (R11) e a coluna (R10)
-	CALL tecla              ; obtém o valor da tecla premida (R9) a partir da linha (R11) e da coluna (R10)
-	CMP R9, 0               ; se a tecla premida for 0
-	JZ move_rover_esquerda  ; move o rover para a esquerda
+	CALL tecla				; obtém o valor da tecla premida (R9)
+	CMP R9, 0				; se a tecla premida for 0
+	JZ tecla_0				; move o rover para a esquerda
 	CMP R9, 1				; se a tecla premida for 1
-	JZ desce_meteoro		; desce o meteoro
-	CMP R9, 2               ; se a tecla premida for 2
-	JZ move_rover_direita	; move o rover para a direita
+	JZ tecla_1				; desce o meteoro
+	CMP R9, 2				; se a tecla premida for 2
+	JZ tecla_2				; move o rover para a direita
 	CMP R9, 3				; se a tecla premida for 3
-    JZ aumenta_display      ; aumenta o valor no display
+    JZ tecla_3				; aumenta o valor no display
     CMP R9, 7				; se a tecla premida for 7
-    JZ diminui_display      ; diminui o valor no display
+    JZ tecla_7				; diminui o valor no display
 	JMP ciclo
-move_rover_esquerda:
-    MOV R11, LINHA_ROVER
-    MOV R10, R1
+tecla_0:
+    MOV R11, LINHA_ROVER	; linha de referência do rover
+    MOV R10, R1				; coluna de referência do rover
 	MOV R8, rover			; tabela que define o rover
 	MOV R7, -1				; distância a percorrer
 	CALL move_horizontal	; move para a esquerda
@@ -89,21 +89,21 @@ move_rover_esquerda:
 	MOV R11, ATRASO         ; valor que define o atraso
 	CALL atraso             ; aplica o atraso
 	JMP ciclo
-desce_meteoro:
+tecla_1:
 	CALL ha_tecla
-	MOV R11, 0
+	MOV R11, 0				; número do som
 	MOV [TOCA_SOM], R11		; toca o primeiro som (meteoro a cair)
 	MOV R11, R2				; linha de referência do meteoro bom
 	MOV R10, COLUNA_MET_BOM	; coluna de referência do meteoro bom
 	MOV R8, meteoro_bom		; tabela que define o meteoro bom
-	CALL apaga_boneco
-	ADD R11, 1
-	CALL desenha_boneco
-	MOV R2, R11
+	CALL apaga_boneco		; apaga o meteoro na posição antiga
+	ADD R11, 1				; atualiza a linha de referência do meteoro
+	CALL desenha_boneco		; redesenha o meteoro na posição atualizada
+	MOV R2, R11				; atualiza a linha de referência do meteoro permanentemente
 	JMP ciclo
-move_rover_direita:
-    MOV R11, LINHA_ROVER
-    MOV R10, R1
+tecla_2:
+    MOV R11, LINHA_ROVER	; linha atual do rover
+    MOV R10, R1				; coluna atual do rover
 	MOV R8, rover			; tabela que define o rover
 	MOV R7, 1				; distância a percorrer
 	CALL move_horizontal	; move para a direita
@@ -111,18 +111,76 @@ move_rover_direita:
 	MOV R11, ATRASO         ; valor que define o atraso
 	CALL atraso             ; aplica o atraso
     JMP ciclo
-aumenta_display:
-    CALL ha_tecla
-    ADD R0, 1				; adiciona um ao valor do display
-    MOV [DISPLAY], R0		; mostra o novo valor no display
+tecla_3:
+    CALL ha_tecla			; aguarda que a tecla pare de ser premida
+	MOV R11, R0				; copia o valor do display para R11
+	CALL incrementa_decimal	; incrementa o valor em R11
+	MOV R0, R11				; atualiza o valor do display
+    MOV [DISPLAY], R0		; escreve o valor atualizado no display
     JMP ciclo
-diminui_display:
+tecla_7:
     CALL ha_tecla
     CMP R0, 0				; vê se o valor no display é zero para evitar números negativos
     JZ ciclo				; o valor mostrado no display não pode ser negativo
-    SUB R0, 1				; subtrai um ao valor do display
-    MOV [DISPLAY], R0		; mostra o novo valor no display
+    MOV R11, R0				; copia o valor do display para R11
+	CALL decrementa_decimal	; decrementa o valor em R11
+	MOV R0, R11				; atualiza o valor do display
+	MOV [DISPLAY], R0		; escreve o valor atualizado no display
     JMP ciclo
+
+; *******************************************************
+; INCREMENTA_DECIMAL - Incrementa em 1 o valor em decimal
+; Argumentos: R11 - o valor por incrementar
+; Retorna:    R11 - o valor atualizado
+; *******************************************************
+incrementa_decimal:
+	PUSH R0
+	PUSH R1
+	PUSH R2
+	MOV R0, MASCARA				; máscara de 1 byte (começa nos 0-3 bits)
+	MOV R1, 1					; multiplicador
+incrementa_decimal_ciclo:
+	MOV R2, R11					; cópia do valor
+	AND R2, R0					; filtra o primeiro byte
+	ADD R2, -8					; se o dígito for inferior a 9
+	JLE incrementa_decimal_fim	; termina (podemos incrementar o valor)
+	SHR R11, 4					; evidencia o próximo byte
+	SHL R1, 4					; shift left de 1 byte ao valor a multiplicar
+	JMP incrementa_decimal_ciclo
+incrementa_decimal_fim:
+	ADD R11, 1
+	MUL R11, R1		; restaura os bytes anteriores de R11 que sofreram shift
+	POP R2
+	POP R1
+	POP R0
+	RET
+
+; *******************************************************
+; DECREMENTA_DECIMAL - Incrementa em 1 o valor em decimal
+; Argumentos: R11 - o valor por decrementar
+; Retorna:    R11 - o valor atualizado
+; *******************************************************
+decrementa_decimal:
+	PUSH R0
+	PUSH R1
+	PUSH R2
+	MOV R0, MASCARA				; máscara de 1 byte (começa nos 0-3 bits)
+	MOV R1, 6					; valor a subtrair (F - 6 = 9)
+	SUB R11, 1					; decrementa o valor (os F serão substituídos no ciclo que se segue)
+decrementa_decimal_ciclo:
+	MOV R2, R11					; cópia do valor
+	AND R2, R0					; filtra o byte seguinte
+	CMP R2, R0					; se o dígito não for F (aproveita-se o valor da máscara)
+	JNZ decrementa_decimal_fim	; termina
+	SUB R11, R1					; subtrai 6 ao byte evidenciado
+	SHL R0, 4					; evidencia o próximo byte
+	SHL R1, 4					; move o valor a subtrair para o próximo byte
+	JMP decrementa_decimal_ciclo
+decrementa_decimal_fim:
+	POP R1
+	POP R1
+	POP R0
+	RET
 
 ; *********************************************
 ; MOVE_HORIZONTAL - Move na horizontal (negativo para a esquerda e positivo para a direita)
@@ -184,35 +242,35 @@ testa_limites_fim:
 ;
 ; **********************************************************************
 desenha_boneco:
-	PUSH R11			; linha
-	PUSH R10			; coluna
-	PUSH R9				; cor do pixel
-    PUSH R8             ; tabela
-	PUSH R1				; largura
-	PUSH R2				; altura
-	PUSH R3				; coluna inicial
-	PUSH R4				; largura inicial
-	MOV R1, [R8]		; obtém a largura
+	PUSH R11
+	PUSH R10
+	PUSH R9
+    PUSH R8
+	PUSH R0
+	PUSH R1
+	PUSH R2
+	PUSH R3
+	MOV R0, [R8]		; obtém a largura
 	ADD R8, 2			; próximo dado na tabela
-	MOV R2, [R8]		; obtém a altura
-	MOV R3, R10         ; define a coluna inicial
-	MOV R4, R1			; define a largura inicial
+	MOV R1, [R8]		; obtém a altura
+	MOV R2, R10         ; define a coluna inicial
+	MOV R3, R0			; define a largura inicial
 desenha_pixels:
 	ADD R8, 2	    	; próximo dado na tabela
 	MOV	R9, [R8]		; obtém a cor do pixel
 	CALL escreve_pixel	; escreve o pixel usando o R1 (linha), o R2 (coluna) e o R3 (cor)
     ADD R10, 1			; próxima coluna
-    SUB R1, 1			; menos uma coluna para tratar
+    SUB R0, 1			; menos uma coluna para tratar
     JNZ desenha_pixels	; continua até percorrer toda a largura do boneco
-	MOV R10, R3			; redefinir a coluna
-	MOV R1, R4          ; redefinir a largura
+	MOV R10, R2			; redefinir a coluna
+	MOV R0, R3          ; redefinir a largura
 	ADD R11, 1			; próxima linha
-	SUB R2, 1			; menos uma linha para tratar
+	SUB R1, 1			; menos uma linha para tratar
 	JNZ desenha_pixels	; continua até percorrer toda a altura do boneco
-	POP R4
 	POP R3
 	POP R2
-	POP	R1
+	POP R1
+	POP	R0
 	POP	R8
     POP R9
 	POP	R10
@@ -227,35 +285,35 @@ desenha_pixels:
 ;               R8 - tabela que define o boneco
 ; **********************************************************************
 apaga_boneco:
-	PUSH R11			; linha
-	PUSH R10			; coluna
-	PUSH R9				; cor do pixel
-	PUSH R8				; tabela
-	PUSH R1				; largura
-	PUSH R2				; altura
-	PUSH R3				; coluna inicial
-	PUSH R4				; largura inicial
-	MOV R1, [R8]		; obtém a largura
+	PUSH R11
+	PUSH R10
+	PUSH R9
+	PUSH R8
+	PUSH R0
+	PUSH R1
+	PUSH R2
+	PUSH R3
+	MOV R0, [R8]		; obtém a largura
 	ADD R8, 2			; próximo dado na tabela
-	MOV R2, [R8]		; obtém a altura
+	MOV R1, [R8]		; obtém a altura
 	MOV	R9, 0			; cor para apagar o próximo pixel do boneco
-	MOV R3, R10			; define a coluna inicial
-	MOV R4, R1			; define a largura inicial
+	MOV R2, R10			; define a coluna inicial
+	MOV R3, R0			; define a largura inicial
 apaga_pixels:
 	ADD	R8, 2			; próximo dado da tabela
 	CALL escreve_pixel	; escreve cada pixel do boneco
     ADD R10, 1			; próxima coluna
-    SUB R1, 1			; menos uma coluna para tratar
+    SUB R0, 1			; menos uma coluna para tratar
     JNZ  apaga_pixels	; continua até percorrer toda a largura do boneco
-	MOV R10, R3			; redefine a coluna
-	MOV R1, R4			; redefine a largura
+	MOV R10, R2			; redefine a coluna
+	MOV R0, R3			; redefine a largura
 	ADD R11, 1			; próxima linha
-	SUB R2, 1			; menos uma linha para tratar
+	SUB R1, 1			; menos uma linha para tratar
 	JNZ  apaga_pixels	; continua até percorrer toda a altura do boneco
-	POP R4
 	POP R3
 	POP R2
-	POP	R1
+	POP R1
+	POP	R0
 	POP	R8
 	POP	R9
 	POP	R10
@@ -267,7 +325,6 @@ apaga_pixels:
 ; Argumentos:   R11 - linha
 ;               R10 - coluna
 ;               R9 - cor do pixel (em formato ARGB de 16 bits)
-;
 ; **********************************************************************
 escreve_pixel:
 	MOV [DEFINE_LINHA], R11	    ; seleciona a linha
@@ -277,7 +334,7 @@ escreve_pixel:
 
 
 ; ******************************************
-; TECLA - Obtém a tecla premida.
+; TECLA - Obtém o valor da tecla na linha e coluna indicadas.
 ; Argumentos: R11 - linha
 ;             R10 - coluna
 ; Retorna:    R9 - valor da tecla
