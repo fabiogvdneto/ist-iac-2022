@@ -177,7 +177,7 @@ decrementa_decimal_ciclo:
 	SHL R1, 4					; move o valor a subtrair para o próximo byte
 	JMP decrementa_decimal_ciclo
 decrementa_decimal_fim:
-	POP R1
+	POP R2
 	POP R1
 	POP R0
 	RET
